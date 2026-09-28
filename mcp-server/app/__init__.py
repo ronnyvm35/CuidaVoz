@@ -1,0 +1,1 @@
+"""CuidaVoz MCP server — herramientas de adherencia a medicamentos."""

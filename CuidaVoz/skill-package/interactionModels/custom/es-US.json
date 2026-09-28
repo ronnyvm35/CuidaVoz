@@ -1,0 +1,126 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "cuida voz",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "TomarMedicamentoIntent",
+          "slots": [
+            {
+              "name": "medicamento",
+              "type": "MEDICAMENTO"
+            }
+          ],
+          "samples": [
+            "ya tomé mi pastilla",
+            "ya tomé mi medicamento",
+            "ya lo tomé",
+            "sí lo tomé",
+            "tomé la pastilla",
+            "ya tomé el {medicamento}",
+            "ya tomé la {medicamento}",
+            "registra que tomé {medicamento}",
+            "confirma que lo tomé"
+          ]
+        },
+        {
+          "name": "PosponerIntent",
+          "slots": [],
+          "samples": [
+            "todavía no",
+            "aún no",
+            "ahorita no",
+            "después",
+            "recuérdame en diez minutos",
+            "posponer",
+            "no lo he tomado",
+            "todavía no lo tomo"
+          ]
+        },
+        {
+          "name": "ConsultarProximoIntent",
+          "slots": [],
+          "samples": [
+            "qué me toca ahora",
+            "qué medicamento me toca",
+            "cuál es mi próxima dosis",
+            "qué pastilla me toca",
+            "qué me toca tomar",
+            "próximo medicamento",
+            "qué sigue"
+          ]
+        },
+        {
+          "name": "ConsultarAdherenciaIntent",
+          "slots": [],
+          "samples": [
+            "cómo voy hoy",
+            "cómo va mi adherencia",
+            "cuántas pastillas llevo hoy",
+            "resumen de hoy",
+            "ya tomé todas",
+            "cómo estoy de medicamentos hoy"
+          ]
+        },
+        {
+          "name": "RegistrarMedicamentoIntent",
+          "slots": [
+            {
+              "name": "medicamento",
+              "type": "MEDICAMENTO"
+            },
+            {
+              "name": "hora",
+              "type": "AMAZON.TIME"
+            }
+          ],
+          "samples": [
+            "agrega {medicamento} a las {hora}",
+            "registra {medicamento} a las {hora}",
+            "añade {medicamento} a las {hora}",
+            "programa {medicamento} a las {hora}",
+            "agrega el medicamento {medicamento} a las {hora}",
+            "quiero agregar {medicamento} a las {hora}",
+            "agrega {medicamento}",
+            "registra {medicamento}"
+          ]
+        }
+      ],
+      "types": [
+        {
+          "name": "MEDICAMENTO",
+          "values": [
+            { "name": { "value": "Losartán", "synonyms": ["losartan", "losartan 50", "losartán 50 mg"] } },
+            { "name": { "value": "Metformina", "synonyms": ["metformina 850", "metformina 850 mg"] } },
+            { "name": { "value": "Aspirina", "synonyms": ["aspirina", "asa"] } },
+            { "name": { "value": "Paracetamol", "synonyms": ["acetaminofén", "acetaminofen"] } },
+            { "name": { "value": "Ibuprofeno", "synonyms": ["ibuprofen"] } },
+            { "name": { "value": "Atorvastatina", "synonyms": ["atorvastatina 20"] } },
+            { "name": { "value": "Omeprazol", "synonyms": ["omeprazol 20"] } },
+            { "name": { "value": "pastilla", "synonyms": ["medicamento", "medicina", "dosis"] } }
+          ]
+        }
+      ]
+    }
+  }
+}

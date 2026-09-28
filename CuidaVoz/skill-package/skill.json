@@ -1,0 +1,74 @@
+{
+  "manifest": {
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "uri": "arn:aws:lambda:us-east-1:195714074952:function:98c546ce-6145-41bd-82aa-1d864e19cdfa:Release_0"
+        },
+        "interfaces": [],
+        "regions": {
+          "EU": {
+            "endpoint": {
+              "uri": "arn:aws:lambda:eu-west-1:195714074952:function:98c546ce-6145-41bd-82aa-1d864e19cdfa:Release_0"
+            }
+          },
+          "NA": {
+            "endpoint": {
+              "uri": "arn:aws:lambda:us-east-1:195714074952:function:98c546ce-6145-41bd-82aa-1d864e19cdfa:Release_0"
+            }
+          },
+          "FE": {
+            "endpoint": {
+              "uri": "arn:aws:lambda:us-west-2:195714074952:function:98c546ce-6145-41bd-82aa-1d864e19cdfa:Release_0"
+            }
+          }
+        }
+      }
+    },
+    "manifestVersion": "1.0",
+    "publishingInformation": {
+      "automaticClonedLocale": {
+        "locales": [
+          {
+            "source": "es-MX"
+          }
+        ]
+      },
+      "distributionCountries": [],
+      "isAvailableWorldwide": true,
+      "locales": {
+        "es-ES": {
+          "name": "CuidaVoz",
+          "summary": "Asistente de voz para adherencia a medicamentos.",
+          "description": "CuidaVoz recuerda tus medicamentos, confirma la dosis por voz y alerta al cuidador si no hay respuesta.",
+          "examplePhrases": [
+            "Alexa, abre cuida voz",
+            "Alexa, dile a cuida voz qué me toca ahora",
+            "Alexa, dile a cuida voz ya lo tomé"
+          ]
+        },
+        "es-US": {
+          "name": "CuidaVoz",
+          "summary": "Asistente de voz para adherencia a medicamentos.",
+          "description": "CuidaVoz recuerda tus medicamentos, confirma la dosis por voz y alerta al cuidador si no hay respuesta.",
+          "examplePhrases": [
+            "Alexa, abre cuida voz",
+            "Alexa, dile a cuida voz qué me toca ahora",
+            "Alexa, dile a cuida voz ya lo tomé"
+          ]
+        },
+        "es-MX": {
+          "name": "CuidaVoz",
+          "summary": "Asistente de voz para adherencia a medicamentos.",
+          "description": "CuidaVoz recuerda tus medicamentos, confirma la dosis por voz y alerta al cuidador si no hay respuesta.",
+          "examplePhrases": [
+            "Alexa, abre cuida voz",
+            "Alexa, dile a cuida voz qué me toca ahora",
+            "Alexa, dile a cuida voz ya lo tomé"
+          ]
+        }
+      },
+      "testingInstructions": "Di: Alexa, abre cuida voz. Luego: qué me toca ahora / ya lo tomé / todavía no / cómo voy hoy."
+    }
+  }
+}

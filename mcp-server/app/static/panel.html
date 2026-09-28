@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CuidaVoz — Panel</title>
+  <style>
+    :root {
+      --bg: #0f1c1a;
+      --panel: #17302c;
+      --text: #e8f2ef;
+      --muted: #9bb5ae;
+      --accent: #2db88a;
+      --warn: #e0a106;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #1d4a40 0%, transparent 55%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    main { max-width: 860px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    h1 { font-size: clamp(2rem, 4vw, 2.8rem); letter-spacing: -0.03em; margin: 0 0 0.35rem; }
+    .sub { color: var(--muted); margin-bottom: 2rem; }
+    .grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      margin-bottom: 1.25rem;
+    }
+    .stat, .box {
+      background: color-mix(in srgb, var(--panel) 88%, black);
+      border: 1px solid #2a4a43;
+      border-radius: 14px;
+      padding: 1rem 1.1rem;
+    }
+    .stat .label { color: var(--muted); font-size: 0.85rem; }
+    .stat .value { font-size: 1.8rem; font-weight: 700; margin-top: 0.25rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.65rem; margin: 1rem 0 1.5rem; }
+    button {
+      border: 0; border-radius: 999px; padding: 0.7rem 1.1rem;
+      font-weight: 600; cursor: pointer; background: var(--accent); color: #06241a;
+    }
+    button.secondary { background: #2a4450; color: var(--text); }
+    button.warn { background: var(--warn); color: #1d1400; }
+    pre {
+      white-space: pre-wrap; word-break: break-word; background: #0b1513;
+      border-radius: 12px; padding: 1rem; border: 1px solid #27443d; color: #cfe6df; min-height: 120px;
+    }
+    .badge {
+      display: inline-block; padding: 0.2rem 0.55rem; border-radius: 999px;
+      font-size: 0.75rem; background: #21463d; color: var(--accent);
+    }
+    .alert {
+      margin-top: 0.75rem; padding: 0.85rem 1rem; border-radius: 12px;
+      background: #3a221f; border: 1px solid #6d3a34; color: #ffd4ce; display: none;
+    }
+    .alert.show { display: block; }
+  </style>
+</head>
+<body>
+  <main>
+    <span class="badge">CuidaVoz demo</span>
+    <h1>Panel del día</h1>
+    <p class="sub">Historial de adherencia y disparadores de demo.</p>
+    <div class="grid">
+      <div class="stat"><div class="label">Tomadas</div><div class="value" id="taken">—</div></div>
+      <div class="stat"><div class="label">Esperadas</div><div class="value" id="expected">—</div></div>
+      <div class="stat"><div class="label">Pendientes</div><div class="value" id="pending">—</div></div>
+    </div>
+    <div class="actions">
+      <button onclick="refresh()">Actualizar</button>
+      <button class="secondary" onclick="triggerReminder()">Disparar recordatorio</button>
+      <button class="warn" onclick="simulateNoResponse()">Simular sin respuesta</button>
+    </div>
+    <div class="alert" id="wa"></div>
+    <div class="box"><pre id="out">Listo.</pre></div>
+  </main>
+  <script>
+    const userId = "demo-user";
+    const out = document.getElementById("out");
+    const wa = document.getElementById("wa");
+    async function refresh() {
+      const res = await fetch(`/demo/adherence/${userId}`);
+      const data = await res.json();
+      const d = data.data || {};
+      document.getElementById("taken").textContent = d.taken ?? 0;
+      document.getElementById("expected").textContent = d.expected ?? 0;
+      document.getElementById("pending").textContent = d.pending ?? 0;
+      out.textContent = JSON.stringify(data, null, 2);
+    }
+    async function triggerReminder() {
+      const res = await fetch(`/demo/trigger-reminder?user_id=${userId}`, { method: "POST" });
+      out.textContent = JSON.stringify(await res.json(), null, 2);
+      wa.classList.remove("show");
+      await refresh();
+    }
+    async function simulateNoResponse() {
+      const res = await fetch(`/demo/simulate-no-response?user_id=${userId}`, { method: "POST" });
+      const data = await res.json();
+      out.textContent = JSON.stringify(data, null, 2);
+      if (data.whatsapp_preview) {
+        wa.textContent = "WhatsApp al cuidador: " + data.whatsapp_preview;
+        wa.classList.add("show");
+      }
+      await refresh();
+    }
+    refresh();
+  </script>
+</body>
+</html>

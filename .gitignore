@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+.mypy_cache/
+CuidaVoz/.alexa-git/
+CuidaVoz/.ask/
+docs/
+_make_clean_repo.ps1
