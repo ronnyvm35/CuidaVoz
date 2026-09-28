@@ -25,6 +25,17 @@ MCP_BASE_URL = os.environ.get(
 ).rstrip("/")
 
 
+def resolve_user_id(handler_input: HandlerInput) -> str:
+    """Usa el userId de Alexa cuando existe; si no, demo-user."""
+    try:
+        uid = handler_input.request_envelope.context.system.user.user_id
+        if uid:
+            return uid
+    except Exception:  # noqa: BLE001
+        pass
+    return DEFAULT_USER_ID
+
+
 # --- Cliente MCP / fallback local -------------------------------------------------
 
 _LOCAL = {
@@ -177,12 +188,13 @@ class TomarMedicamentoIntentHandler(AbstractRequestHandler):
         return ask_utils.is_intent_name("TomarMedicamentoIntent")(handler_input)
 
     def handle(self, handler_input):
+        uid = resolve_user_id(handler_input)
         med_name = slot_value(handler_input, "medicamento") or "próximo"
         result = call_tool(
             "log_dose",
-            {"user_id": DEFAULT_USER_ID, "med_id": med_name, "status": "taken"},
+            {"user_id": uid, "med_id": med_name, "status": "taken"},
         )
-        adherence = call_tool("get_adherence_today", {"user_id": DEFAULT_USER_ID})
+        adherence = call_tool("get_adherence_today", {"user_id": uid})
         data = adherence.get("data") or {}
         taken = data.get("taken", 0)
         expected = data.get("expected", 0)
@@ -197,9 +209,10 @@ class PosponerIntentHandler(AbstractRequestHandler):
         return ask_utils.is_intent_name("PosponerIntent")(handler_input)
 
     def handle(self, handler_input):
+        uid = resolve_user_id(handler_input)
         result = call_tool(
             "log_dose",
-            {"user_id": DEFAULT_USER_ID, "med_id": "próximo", "status": "pending"},
+            {"user_id": uid, "med_id": "próximo", "status": "pending"},
         )
         data = result.get("data") or {}
         intentos = data.get("intentos", 1)
@@ -224,7 +237,8 @@ class ConsultarProximoIntentHandler(AbstractRequestHandler):
         return ask_utils.is_intent_name("ConsultarProximoIntent")(handler_input)
 
     def handle(self, handler_input):
-        result = call_tool("get_next_dose", {"user_id": DEFAULT_USER_ID})
+        uid = resolve_user_id(handler_input)
+        result = call_tool("get_next_dose", {"user_id": uid})
         data = result.get("data")
         if not data:
             speak = "No tienes medicamentos registrados todavía."
@@ -243,7 +257,8 @@ class ConsultarAdherenciaIntentHandler(AbstractRequestHandler):
         return ask_utils.is_intent_name("ConsultarAdherenciaIntent")(handler_input)
 
     def handle(self, handler_input):
-        result = call_tool("get_adherence_today", {"user_id": DEFAULT_USER_ID})
+        uid = resolve_user_id(handler_input)
+        result = call_tool("get_adherence_today", {"user_id": uid})
         data = result.get("data") or {}
         speak = (
             f"Hoy llevas {data.get('taken', 0)} de {data.get('expected', 0)} medicamentos. "
@@ -285,10 +300,11 @@ class RegistrarMedicamentoIntentHandler(AbstractRequestHandler):
                 nombre = " ".join(p for j, p in enumerate(parts) if j != i and p.lower() != "mg").strip() or nombre
                 break
 
+        uid = resolve_user_id(handler_input)
         result = call_tool(
             "schedule_reminder",
             {
-                "user_id": DEFAULT_USER_ID,
+                "user_id": uid,
                 "nombre": nombre,
                 "dosis": dosis_text,
                 "time": time_value,

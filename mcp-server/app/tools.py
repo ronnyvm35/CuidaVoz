@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 
-from .models import CaregiverAlert, DoseLog, Medication, ToolResponse
+from .models import CaregiverAlert, DoseLog, Medication, ToolResponse, course_window, medication_is_active
 from .store import now_iso, store
 
 
@@ -11,23 +11,63 @@ logger = logging.getLogger(__name__)
 MAX_PENDING_ATTEMPTS = 2
 
 
+def _course_progress(user_id: str, med: Medication) -> dict:
+    if not med.dias_tratamiento or not med.fecha_inicio or not med.fecha_fin:
+        return {"tiene_curso": False}
+    days_taken = {
+        d.timestamp[:10]
+        for d in store.doses.get(user_id, [])
+        if d.med_id == med.med_id and d.status == "taken"
+    }
+    # días del curso que ya pasaron (incl. hoy) donde hubo al menos una toma
+    active_days = sorted(
+        d for d in days_taken if med.fecha_inicio <= d <= med.fecha_fin
+    )
+    return {
+        "tiene_curso": True,
+        "dias_tratamiento": med.dias_tratamiento,
+        "fecha_inicio": med.fecha_inicio,
+        "fecha_fin": med.fecha_fin,
+        "dias_con_toma": len(active_days),
+        "activo_hoy": medication_is_active(med),
+        "completado": len(active_days) >= med.dias_tratamiento
+        or (not medication_is_active(med) and len(active_days) > 0),
+    }
+
+
 def get_medications(user_id: str) -> ToolResponse:
+    store.get_or_create_user(user_id)
     meds = store.list_medications(user_id)
+    payload = []
+    for m in meds:
+        row = m.model_dump()
+        row["curso"] = _course_progress(user_id, m)
+        row["activo_hoy"] = medication_is_active(m)
+        payload.append(row)
+    activos = sum(1 for m in meds if medication_is_active(m))
     return ToolResponse(
         ok=True,
-        data=[m.model_dump() for m in meds],
-        message=f"{len(meds)} medicamento(s) activos",
+        data=payload,
+        message=f"{activos} medicamento(s) activos hoy ({len(meds)} registrados)",
     )
 
 
 def get_next_dose(user_id: str) -> ToolResponse:
-    meds = store.list_medications(user_id)
+    store.get_or_create_user(user_id)
+    meds = [m for m in store.list_medications(user_id) if medication_is_active(m)]
     if not meds:
-        return ToolResponse(ok=True, data=None, message="No hay medicamentos registrados")
+        return ToolResponse(
+            ok=True,
+            data=None,
+            message="No hay medicamentos activos hoy (revisa si el curso de días ya terminó)",
+        )
 
-    # MVP: el primero con horario definido; luego se mejora con timezone real
     next_med = sorted(meds, key=lambda m: (m.horarios[0] if m.horarios else "99:99"))[0]
     hora = next_med.horarios[0] if next_med.horarios else "sin horario"
+    curso = _course_progress(user_id, next_med)
+    msg = f"Próximo: {next_med.nombre} {next_med.dosis} a las {hora}"
+    if curso.get("tiene_curso"):
+        msg += f" (día {min(curso['dias_con_toma'] + 1, curso['dias_tratamiento'])} de {curso['dias_tratamiento']})"
     return ToolResponse(
         ok=True,
         data={
@@ -36,12 +76,14 @@ def get_next_dose(user_id: str) -> ToolResponse:
             "dosis": next_med.dosis,
             "hora": hora,
             "con_comida": next_med.con_comida,
+            "curso": curso,
         },
-        message=f"Próximo: {next_med.nombre} {next_med.dosis} a las {hora}",
+        message=msg,
     )
 
 
 def log_dose(user_id: str, med_id: str, status: str) -> ToolResponse:
+    store.get_or_create_user(user_id)
     med = store.get_medication(user_id, med_id)
     if med is None:
         # permitir log por nombre corto en demo
@@ -102,7 +144,11 @@ def schedule_reminder(
     nombre: str | None = None,
     dosis: str | None = None,
     con_comida: bool = False,
+    dias_tratamiento: int | None = None,
 ) -> ToolResponse:
+    store.get_or_create_user(user_id)
+    inicio, fin = course_window(dias_tratamiento)
+
     if med_id:
         med = store.get_medication(user_id, med_id)
         if med is None:
@@ -110,6 +156,10 @@ def schedule_reminder(
         if time not in med.horarios:
             med.horarios.append(time)
             med.horarios.sort()
+        if dias_tratamiento:
+            med.dias_tratamiento = dias_tratamiento
+            med.fecha_inicio = inicio
+            med.fecha_fin = fin
         store.upsert_medication(med)
     else:
         if not nombre:
@@ -121,6 +171,10 @@ def schedule_reminder(
                 existing.horarios.sort()
             if dosis:
                 existing.dosis = dosis
+            if dias_tratamiento:
+                existing.dias_tratamiento = dias_tratamiento
+                existing.fecha_inicio = inicio
+                existing.fecha_fin = fin
             store.upsert_medication(existing)
             med = existing
         else:
@@ -131,30 +185,39 @@ def schedule_reminder(
                 dosis=dosis or "",
                 horarios=[time],
                 con_comida=con_comida,
+                dias_tratamiento=dias_tratamiento,
+                fecha_inicio=inicio,
+                fecha_fin=fin,
             )
             store.upsert_medication(med)
 
+    extra = ""
+    if med.dias_tratamiento and med.fecha_fin:
+        extra = f" por {med.dias_tratamiento} días (hasta {med.fecha_fin})"
     return ToolResponse(
         ok=True,
         data=med.model_dump(),
-        message=f"Recordatorio de {med.nombre} a las {time} programado",
+        message=f"Recordatorio de {med.nombre} a las {time}{extra} programado",
         logged_at=now_iso(),
     )
 
 
 def notify_caregiver(user_id: str, message: str) -> ToolResponse:
     user = store.get_user(user_id)
-    destino = (
-        os.getenv("TELEGRAM_CHAT_ID")
-        or (user.cuidador_telegram if user and user.cuidador_telegram else None)
-        or (user.cuidador_whatsapp if user else None)
-        or "desconocido"
-    )
+    # Prioridad: Telegram del hogar (panel) > env global de Render
+    destino = ""
+    if user and user.cuidador_telegram:
+        destino = user.cuidador_telegram.strip()
+    if not destino:
+        destino = (os.getenv("TELEGRAM_CHAT_ID") or "").strip()
+    if not destino:
+        destino = "desconocido"
+
     enviado = False
     telegram_message_id = None
 
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID", str(destino) if destino != "desconocido" else "")
+    chat_id = destino if destino != "desconocido" else ""
 
     if bot_token and chat_id:
         try:
@@ -202,15 +265,16 @@ def notify_caregiver(user_id: str, message: str) -> ToolResponse:
 
 
 def get_adherence_today(user_id: str) -> ToolResponse:
-    meds = store.list_medications(user_id)
+    store.get_or_create_user(user_id)
+    meds = [m for m in store.list_medications(user_id) if medication_is_active(m)]
     doses = store.list_doses_today(user_id)
     taken = [d for d in doses if d.status == "taken"]
     pending = [d for d in doses if d.status == "pending"]
     skipped = [d for d in doses if d.status == "skipped"]
 
-    # MVP: 1 dosis esperada por medicamento con al menos un horario
     expected = max(len([m for m in meds if m.horarios]), 1) if meds else 0
     taken_count = len({d.med_id for d in taken})
+    cursos = [_course_progress(user_id, m) | {"nombre": m.nombre} for m in store.list_medications(user_id) if m.dias_tratamiento]
 
     return ToolResponse(
         ok=True,
@@ -220,6 +284,7 @@ def get_adherence_today(user_id: str) -> ToolResponse:
             "pending": len(pending),
             "skipped": len(skipped),
             "doses": [d.model_dump() for d in doses],
+            "cursos": cursos,
         },
         message=f"Llevas {taken_count} de {expected} hoy",
     )

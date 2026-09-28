@@ -11,9 +11,11 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from . import tools
 from .models import (
+    AddMedicationInput,
     LogDoseInput,
     NotifyCaregiverInput,
     ScheduleReminderInput,
+    SetupHouseholdInput,
     ToolResponse,
     UserIdInput,
 )
@@ -80,8 +82,9 @@ def schedule_reminder(
     nombre: str | None = None,
     dosis: str | None = None,
     con_comida: bool = False,
+    dias_tratamiento: int | None = None,
 ) -> dict:
-    """Crea o actualiza un recordatorio de medicamento."""
+    """Crea o actualiza un recordatorio. dias_tratamiento=5 → curso de 5 días."""
     return tools.schedule_reminder(
         user_id=user_id,
         time=time,
@@ -89,6 +92,7 @@ def schedule_reminder(
         nombre=nombre,
         dosis=dosis,
         con_comida=con_comida,
+        dias_tratamiento=dias_tratamiento,
     ).model_dump()
 
 
@@ -168,6 +172,7 @@ async def rest_schedule_reminder(body: ScheduleReminderInput):
         nombre=body.nombre,
         dosis=body.dosis,
         con_comida=body.con_comida,
+        dias_tratamiento=body.dias_tratamiento,
     )
 
 
@@ -179,6 +184,77 @@ async def rest_notify_caregiver(body: NotifyCaregiverInput):
 @app.post("/api/tools/get_adherence_today", response_model=ToolResponse)
 async def rest_get_adherence_today(body: UserIdInput):
     return tools.get_adherence_today(body.user_id)
+
+
+@app.get("/demo/household/{user_id}")
+async def demo_household(user_id: str):
+    user = store.get_or_create_user(user_id)
+    meds = store.list_medications(user_id)
+    return {
+        "ok": True,
+        "user": user.model_dump(),
+        "medications": [m.model_dump() for m in meds],
+        "bot": "https://t.me/CuidaVoz_bot",
+    }
+
+
+@app.post("/demo/setup-household")
+async def demo_setup_household(body: SetupHouseholdInput):
+    user = store.get_or_create_user(body.user_id, body.nombre)
+    user.nombre = body.nombre.strip() or user.nombre
+    user.cuidador_telegram = body.cuidador_telegram.strip()
+    user.timezone = body.timezone
+    store.upsert_user(user)
+    return {
+        "ok": True,
+        "message": f"Hogar configurado: {user.nombre} → Telegram {user.cuidador_telegram}",
+        "user": user.model_dump(),
+    }
+
+
+@app.post("/demo/add-medication")
+async def demo_add_medication(body: AddMedicationInput):
+    store.get_or_create_user(body.user_id)
+    result = tools.schedule_reminder(
+        user_id=body.user_id,
+        time=body.time,
+        nombre=body.nombre,
+        dosis=body.dosis,
+        con_comida=body.con_comida,
+        dias_tratamiento=body.dias_tratamiento,
+    )
+    return result.model_dump()
+
+
+@app.post("/demo/confirm-taken")
+async def demo_confirm_taken(user_id: str = "demo-user"):
+    nxt = tools.get_next_dose(user_id)
+    med_id = (nxt.data or {}).get("med_id") or "próximo"
+    logged = tools.log_dose(user_id, med_id, "taken")
+    adherence = tools.get_adherence_today(user_id)
+    return {"ok": True, "log": logged.model_dump(), "adherence": adherence.model_dump()}
+
+
+@app.post("/demo/run-full-flow")
+async def demo_run_full_flow(user_id: str = "demo-user"):
+    """Demo del problema completo: recordatorio → 2 sin respuesta → Telegram → confirmación."""
+    store.get_or_create_user(user_id)
+    store.clear_doses_today(user_id)
+    reminder = await demo_trigger_reminder(user_id)
+    escalation = await demo_simulate_no_response(user_id)
+    confirmation = await demo_confirm_taken(user_id)
+    return {
+        "ok": True,
+        "steps": {
+            "1_reminder": reminder,
+            "2_escalation_telegram": escalation,
+            "3_user_confirmed": confirmation,
+        },
+        "summary": (
+            "Recordatorio generado, cuidador alertado por Telegram tras 2 intentos, "
+            "y dosis confirmada. Ese es el ciclo de valor de CuidaVoz."
+        ),
+    }
 
 
 @app.get("/demo/alerts/{user_id}")

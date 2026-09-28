@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from threading import Lock
 from uuid import uuid4
 
@@ -41,14 +41,18 @@ class InMemoryStore:
                 dosis="50 mg",
                 horarios=["08:00"],
                 con_comida=False,
+                # crónico: sin curso (indefinido)
             ),
             Medication(
                 user_id=user_id,
-                med_id="med-metformina",
-                nombre="Metformina",
-                dosis="850 mg",
+                med_id="med-amoxicilina",
+                nombre="Amoxicilina",
+                dosis="500 mg",
                 horarios=["08:00", "20:00"],
                 con_comida=True,
+                dias_tratamiento=5,
+                fecha_inicio=datetime.now(timezone.utc).date().isoformat(),
+                fecha_fin=(datetime.now(timezone.utc).date() + timedelta(days=4)).isoformat(),
             ),
         ]
         self.doses[user_id] = []
@@ -56,6 +60,51 @@ class InMemoryStore:
 
     def get_user(self, user_id: str) -> User | None:
         return self.users.get(user_id)
+
+    def upsert_user(self, user: User) -> User:
+        with self._lock:
+            self.users[user.user_id] = user
+            self.medications.setdefault(user.user_id, [])
+            self.doses.setdefault(user.user_id, [])
+            self.alerts.setdefault(user.user_id, [])
+            return deepcopy(user)
+
+    def get_or_create_user(self, user_id: str, nombre: str = "Usuario") -> User:
+        existing = self.get_user(user_id)
+        if existing:
+            return existing
+        user = User(
+            user_id=user_id,
+            nombre=nombre,
+            cuidador_telegram=os.getenv("TELEGRAM_CHAT_ID", ""),
+            timezone="America/Mexico_City",
+        )
+        self.upsert_user(user)
+        # Copia medicamentos demo si el usuario es nuevo y no tiene
+        if not self.medications.get(user_id):
+            seed = self.medications.get("demo-user", [])
+            self.medications[user_id] = [
+                Medication(
+                    user_id=user_id,
+                    med_id=m.med_id if m.med_id.startswith("med-") else self.new_med_id(),
+                    nombre=m.nombre,
+                    dosis=m.dosis,
+                    horarios=list(m.horarios),
+                    con_comida=m.con_comida,
+                    dias_tratamiento=m.dias_tratamiento,
+                    fecha_inicio=m.fecha_inicio,
+                    fecha_fin=m.fecha_fin,
+                )
+                for m in seed
+            ]
+        return deepcopy(user)
+
+    def clear_doses_today(self, user_id: str) -> None:
+        today = datetime.now(timezone.utc).date().isoformat()
+        with self._lock:
+            self.doses[user_id] = [
+                d for d in self.doses.get(user_id, []) if not d.timestamp.startswith(today)
+            ]
 
     def list_medications(self, user_id: str) -> list[Medication]:
         return deepcopy(self.medications.get(user_id, []))
