@@ -61,6 +61,8 @@ class ScheduleReminderInput(BaseModel):
     time: str
     con_comida: bool = False
     dias_tratamiento: int | None = None
+    # cotidiano = sin fecha de fin; temporal = curso de N días
+    uso: str | None = None
 
 
 class NotifyCaregiverInput(BaseModel):

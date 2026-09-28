@@ -3,44 +3,34 @@
     "languageModel": {
       "invocationName": "cuida voz",
       "intents": [
-        {
-          "name": "AMAZON.CancelIntent",
-          "samples": []
-        },
-        {
-          "name": "AMAZON.HelpIntent",
-          "samples": []
-        },
-        {
-          "name": "AMAZON.StopIntent",
-          "samples": []
-        },
-        {
-          "name": "AMAZON.NavigateHomeIntent",
-          "samples": []
-        },
-        {
-          "name": "AMAZON.FallbackIntent",
-          "samples": []
-        },
+        { "name": "AMAZON.CancelIntent", "samples": [] },
+        { "name": "AMAZON.HelpIntent", "samples": [] },
+        { "name": "AMAZON.StopIntent", "samples": [] },
+        { "name": "AMAZON.NavigateHomeIntent", "samples": [] },
+        { "name": "AMAZON.FallbackIntent", "samples": [] },
+        { "name": "AMAZON.YesIntent", "samples": [] },
+        { "name": "AMAZON.NoIntent", "samples": [] },
         {
           "name": "TomarMedicamentoIntent",
-          "slots": [
-            {
-              "name": "medicamento",
-              "type": "MEDICAMENTO"
-            }
-          ],
+          "slots": [],
           "samples": [
             "ya tomé mi pastilla",
             "ya tomé mi medicamento",
             "ya lo tomé",
             "sí lo tomé",
             "tomé la pastilla",
+            "confirma que lo tomé"
+          ]
+        },
+        {
+          "name": "TomarNombradoIntent",
+          "slots": [
+            { "name": "medicamento", "type": "AMAZON.SearchQuery" }
+          ],
+          "samples": [
             "ya tomé el {medicamento}",
             "ya tomé la {medicamento}",
-            "registra que tomé {medicamento}",
-            "confirma que lo tomé"
+            "registra que tomé {medicamento}"
           ]
         },
         {
@@ -83,41 +73,95 @@
           ]
         },
         {
+          "name": "ListarMedicamentosIntent",
+          "slots": [],
+          "samples": [
+            "cuáles son mis medicamentos",
+            "qué medicamentos tengo",
+            "lista mis medicamentos",
+            "qué tengo configurado",
+            "mis medicamentos"
+          ]
+        },
+        {
+          "name": "IniciarConfiguracionIntent",
+          "slots": [],
+          "samples": [
+            "configura mis medicamentos",
+            "quiero agregar un medicamento",
+            "configura mis medicinas",
+            "quiero configurar mis medicamentos"
+          ]
+        },
+        {
           "name": "RegistrarMedicamentoIntent",
           "slots": [
-            {
-              "name": "medicamento",
-              "type": "MEDICAMENTO"
-            },
-            {
-              "name": "hora",
-              "type": "AMAZON.TIME"
-            }
+            { "name": "medicamento", "type": "AMAZON.SearchQuery" }
           ],
           "samples": [
-            "agrega {medicamento} a las {hora}",
-            "registra {medicamento} a las {hora}",
-            "añade {medicamento} a las {hora}",
-            "programa {medicamento} a las {hora}",
-            "agrega el medicamento {medicamento} a las {hora}",
-            "quiero agregar {medicamento} a las {hora}",
             "agrega {medicamento}",
-            "registra {medicamento}"
+            "registra {medicamento}",
+            "añade {medicamento}",
+            "configura {medicamento}",
+            "programa {medicamento}",
+            "quiero agregar {medicamento}",
+            "quiero configurar {medicamento}",
+            "configura el medicamento {medicamento}",
+            "agrega el medicamento {medicamento}"
           ]
-        }
-      ],
-      "types": [
+        },
         {
-          "name": "MEDICAMENTO",
-          "values": [
-            { "name": { "value": "Losartán", "synonyms": ["losartan", "losartan 50", "losartán 50 mg"] } },
-            { "name": { "value": "Metformina", "synonyms": ["metformina 850", "metformina 850 mg"] } },
-            { "name": { "value": "Aspirina", "synonyms": ["aspirina", "asa"] } },
-            { "name": { "value": "Paracetamol", "synonyms": ["acetaminofén", "acetaminofen"] } },
-            { "name": { "value": "Ibuprofeno", "synonyms": ["ibuprofen"] } },
-            { "name": { "value": "Atorvastatina", "synonyms": ["atorvastatina 20"] } },
-            { "name": { "value": "Omeprazol", "synonyms": ["omeprazol 20"] } },
-            { "name": { "value": "pastilla", "synonyms": ["medicamento", "medicina", "dosis"] } }
+          "name": "IndicarHoraIntent",
+          "slots": [
+            { "name": "hora", "type": "AMAZON.TIME" }
+          ],
+          "samples": [
+            "a las {hora}",
+            "a la {hora}",
+            "todos los días a las {hora}",
+            "a las {hora} de la mañana",
+            "a las {hora} de la noche",
+            "a las {hora} de la tarde"
+          ]
+        },
+        {
+          "name": "UsoCotidianoIntent",
+          "slots": [],
+          "samples": [
+            "es de uso cotidiano",
+            "lo tomo todos los días",
+            "es cotidiano",
+            "todos los días",
+            "de uso diario",
+            "es permanente",
+            "lo tomo a diario",
+            "de uso cotidiano"
+          ]
+        },
+        {
+          "name": "UsoTemporalIntent",
+          "slots": [],
+          "samples": [
+            "es temporal",
+            "solo por unos días",
+            "por unos días",
+            "es por días",
+            "un tratamiento corto",
+            "solo por un tiempo",
+            "es un medicamento temporal",
+            "tratamiento temporal"
+          ]
+        },
+        {
+          "name": "IndicarDiasIntent",
+          "slots": [
+            { "name": "dias", "type": "AMAZON.NUMBER" }
+          ],
+          "samples": [
+            "por {dias} días",
+            "durante {dias} días",
+            "{dias} días",
+            "son {dias} días"
           ]
         }
       ]

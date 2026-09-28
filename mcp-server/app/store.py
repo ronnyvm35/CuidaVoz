@@ -80,23 +80,8 @@ class InMemoryStore:
             timezone="America/Mexico_City",
         )
         self.upsert_user(user)
-        # Copia medicamentos demo si el usuario es nuevo y no tiene
-        if not self.medications.get(user_id):
-            seed = self.medications.get("demo-user", [])
-            self.medications[user_id] = [
-                Medication(
-                    user_id=user_id,
-                    med_id=m.med_id if m.med_id.startswith("med-") else self.new_med_id(),
-                    nombre=m.nombre,
-                    dosis=m.dosis,
-                    horarios=list(m.horarios),
-                    con_comida=m.con_comida,
-                    dias_tratamiento=m.dias_tratamiento,
-                    fecha_inicio=m.fecha_inicio,
-                    fecha_fin=m.fecha_fin,
-                )
-                for m in seed
-            ]
+        # Cada hogar empieza sin medicamentos. El seed de Losartán/Amoxicilina
+        # queda solo en demo-user, para el panel de la demo.
         return deepcopy(user)
 
     def clear_doses_today(self, user_id: str) -> None:

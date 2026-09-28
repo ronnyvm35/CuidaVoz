@@ -83,8 +83,9 @@ def schedule_reminder(
     dosis: str | None = None,
     con_comida: bool = False,
     dias_tratamiento: int | None = None,
+    uso: str | None = None,
 ) -> dict:
-    """Crea o actualiza un recordatorio. dias_tratamiento=5 → curso de 5 días."""
+    """Crea o actualiza un recordatorio. uso=cotidiano, o dias_tratamiento=5 para un curso temporal."""
     return tools.schedule_reminder(
         user_id=user_id,
         time=time,
@@ -93,6 +94,7 @@ def schedule_reminder(
         dosis=dosis,
         con_comida=con_comida,
         dias_tratamiento=dias_tratamiento,
+        uso=uso,
     ).model_dump()
 
 
@@ -173,6 +175,7 @@ async def rest_schedule_reminder(body: ScheduleReminderInput):
         dosis=body.dosis,
         con_comida=body.con_comida,
         dias_tratamiento=body.dias_tratamiento,
+        uso=body.uso,
     )
 
 

@@ -137,6 +137,20 @@ def log_dose(user_id: str, med_id: str, status: str) -> ToolResponse:
     )
 
 
+def _apply_uso(med: Medication, dias_tratamiento: int | None, uso: str | None) -> None:
+    """cotidiano borra el curso; temporal (o un número de días) lo define."""
+    if uso == "cotidiano":
+        med.dias_tratamiento = None
+        med.fecha_inicio = None
+        med.fecha_fin = None
+        return
+    if dias_tratamiento:
+        inicio, fin = course_window(dias_tratamiento)
+        med.dias_tratamiento = dias_tratamiento
+        med.fecha_inicio = inicio
+        med.fecha_fin = fin
+
+
 def schedule_reminder(
     user_id: str,
     time: str,
@@ -145,9 +159,9 @@ def schedule_reminder(
     dosis: str | None = None,
     con_comida: bool = False,
     dias_tratamiento: int | None = None,
+    uso: str | None = None,
 ) -> ToolResponse:
     store.get_or_create_user(user_id)
-    inicio, fin = course_window(dias_tratamiento)
 
     if med_id:
         med = store.get_medication(user_id, med_id)
@@ -156,10 +170,7 @@ def schedule_reminder(
         if time not in med.horarios:
             med.horarios.append(time)
             med.horarios.sort()
-        if dias_tratamiento:
-            med.dias_tratamiento = dias_tratamiento
-            med.fecha_inicio = inicio
-            med.fecha_fin = fin
+        _apply_uso(med, dias_tratamiento, uso)
         store.upsert_medication(med)
     else:
         if not nombre:
@@ -171,10 +182,7 @@ def schedule_reminder(
                 existing.horarios.sort()
             if dosis:
                 existing.dosis = dosis
-            if dias_tratamiento:
-                existing.dias_tratamiento = dias_tratamiento
-                existing.fecha_inicio = inicio
-                existing.fecha_fin = fin
+            _apply_uso(existing, dias_tratamiento, uso)
             store.upsert_medication(existing)
             med = existing
         else:
@@ -185,15 +193,15 @@ def schedule_reminder(
                 dosis=dosis or "",
                 horarios=[time],
                 con_comida=con_comida,
-                dias_tratamiento=dias_tratamiento,
-                fecha_inicio=inicio,
-                fecha_fin=fin,
             )
+            _apply_uso(med, dias_tratamiento, uso)
             store.upsert_medication(med)
 
     extra = ""
     if med.dias_tratamiento and med.fecha_fin:
-        extra = f" por {med.dias_tratamiento} días (hasta {med.fecha_fin})"
+        extra = f" por {med.dias_tratamiento} días (hasta {med.fecha_fin}), tratamiento temporal"
+    elif uso == "cotidiano" or not med.dias_tratamiento:
+        extra = ", de uso cotidiano"
     return ToolResponse(
         ok=True,
         data=med.model_dump(),
