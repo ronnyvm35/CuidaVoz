@@ -12,7 +12,8 @@ DoseStatus = Literal["taken", "skipped", "pending"]
 class User(BaseModel):
     user_id: str
     nombre: str
-    cuidador_whatsapp: str
+    cuidador_whatsapp: str = ""
+    cuidador_telegram: str = ""
     timezone: str = "America/Mexico_City"
 
 
@@ -38,7 +39,7 @@ class CaregiverAlert(BaseModel):
     user_id: str
     timestamp: str
     mensaje: str
-    canal: str = "whatsapp"
+    canal: str = "telegram"
     enviado: bool = False
 
 

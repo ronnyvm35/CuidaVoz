@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from copy import deepcopy
 from datetime import datetime, timezone
 from threading import Lock
@@ -28,7 +29,8 @@ class InMemoryStore:
         self.users[user_id] = User(
             user_id=user_id,
             nombre="Juan",
-            cuidador_whatsapp="+5215550000000",
+            cuidador_whatsapp="",
+            cuidador_telegram=os.getenv("TELEGRAM_CHAT_ID", ""),
             timezone="America/Mexico_City",
         )
         self.medications[user_id] = [

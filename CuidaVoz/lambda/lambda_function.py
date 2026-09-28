@@ -206,7 +206,7 @@ class PosponerIntentHandler(AbstractRequestHandler):
         notified = data.get("caregiver_notified", False)
         if notified:
             speak = (
-                "Entendido. Como no hubo confirmación, ya avisé a tu cuidador por WhatsApp. "
+                "Entendido. Como no hubo confirmación, ya avisé a tu cuidador por Telegram. "
                 "Cuando la tomes, dime: ya lo tomé."
             )
         elif intentos >= 1:

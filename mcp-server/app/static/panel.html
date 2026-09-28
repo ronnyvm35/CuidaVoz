@@ -103,8 +103,8 @@
       const res = await fetch(`/demo/simulate-no-response?user_id=${userId}`, { method: "POST" });
       const data = await res.json();
       out.textContent = JSON.stringify(data, null, 2);
-      if (data.whatsapp_preview) {
-        wa.textContent = "WhatsApp al cuidador: " + data.whatsapp_preview;
+      if (data.telegram_preview) {
+        wa.textContent = "Telegram al cuidador: " + data.telegram_preview;
         wa.classList.add("show");
       }
       await refresh();

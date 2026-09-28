@@ -94,7 +94,7 @@ def schedule_reminder(
 
 @mcp.tool()
 def notify_caregiver(user_id: str, message: str) -> dict:
-    """Registra una alerta al cuidador (WhatsApp vía Twilio cuando está configurado)."""
+    """Registra una alerta al cuidador (Telegram cuando TELEGRAM_BOT_TOKEN está configurado)."""
     return tools.notify_caregiver(user_id, message).model_dump()
 
 
@@ -222,7 +222,7 @@ async def demo_simulate_no_response(user_id: str = "demo-user"):
         "attempts": [first.model_dump(), second.model_dump()],
         "caregiver_notified": bool((second.data or {}).get("caregiver_notified")),
         "alerts": alerts[-1:] if alerts else [],
-        "whatsapp_preview": alerts[-1]["mensaje"] if alerts else None,
+        "telegram_preview": alerts[-1]["mensaje"] if alerts else None,
     }
 
 

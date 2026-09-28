@@ -144,36 +144,43 @@ def schedule_reminder(
 
 def notify_caregiver(user_id: str, message: str) -> ToolResponse:
     user = store.get_user(user_id)
-    destino = user.cuidador_whatsapp if user else "desconocido"
+    destino = (
+        os.getenv("TELEGRAM_CHAT_ID")
+        or (user.cuidador_telegram if user and user.cuidador_telegram else None)
+        or (user.cuidador_whatsapp if user else None)
+        or "desconocido"
+    )
     enviado = False
-    twilio_sid = None
+    telegram_message_id = None
 
-    account_sid = os.getenv("TWILIO_ACCOUNT_SID")
-    auth_token = os.getenv("TWILIO_AUTH_TOKEN")
-    from_whatsapp = os.getenv("TWILIO_WHATSAPP_FROM")
-    to_whatsapp = os.getenv("TWILIO_WHATSAPP_TO", destino)
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID", str(destino) if destino != "desconocido" else "")
 
-    if account_sid and auth_token and from_whatsapp and to_whatsapp:
+    if bot_token and chat_id:
         try:
-            from twilio.rest import Client
+            import httpx
 
-            client = Client(account_sid, auth_token)
-            to_number = to_whatsapp if to_whatsapp.startswith("whatsapp:") else f"whatsapp:{to_whatsapp}"
-            msg = client.messages.create(
-                body=message,
-                from_=from_whatsapp,
-                to=to_number,
+            url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+            resp = httpx.post(
+                url,
+                json={"chat_id": chat_id, "text": message},
+                timeout=10.0,
             )
-            enviado = True
-            twilio_sid = msg.sid
+            resp.raise_for_status()
+            payload = resp.json()
+            if payload.get("ok"):
+                enviado = True
+                telegram_message_id = str(payload.get("result", {}).get("message_id", ""))
+            else:
+                logger.warning("Telegram API not ok: %s", payload)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Twilio send failed: %s", exc)
+            logger.warning("Telegram send failed: %s", exc)
 
     alert = CaregiverAlert(
         user_id=user_id,
         timestamp=now_iso(),
         mensaje=message,
-        canal="whatsapp",
+        canal="telegram",
         enviado=enviado,
     )
     store.add_alert(alert)
@@ -181,12 +188,12 @@ def notify_caregiver(user_id: str, message: str) -> ToolResponse:
         ok=True,
         data={
             "alert": alert.model_dump(),
-            "destino": destino,
-            "twilio_sid": twilio_sid,
-            "twilio_pending": not enviado,
+            "destino": str(destino),
+            "telegram_message_id": telegram_message_id,
+            "telegram_pending": not enviado,
         },
         message=(
-            f"Alerta enviada al cuidador ({destino})"
+            f"Alerta enviada al cuidador por Telegram ({destino})"
             if enviado
             else f"Alerta registrada para cuidador ({destino})"
         ),
