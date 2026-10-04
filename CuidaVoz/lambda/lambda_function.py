@@ -312,7 +312,7 @@ def _clear_setup(attrs: dict) -> None:
     for key in (
         "setup_step", "pending_nombre", "pending_dosis", "pending_hora", "queue",
         "pending_forma", "pending_cantidad", "pending_intervalo", "pending_uso",
-        "pending_dias", "cantidad_omitida",
+        "pending_dias", "cantidad_omitida", "pending_borrar",
     ):
         attrs.pop(key, None)
 
@@ -484,6 +484,17 @@ def commit_medication(handler_input: HandlerInput, prefix: str = "") -> Response
 # --- Handlers --------------------------------------------------------------------
 
 
+def _ask_remove(handler_input: HandlerInput) -> Response:
+    raw = slot_value(handler_input, "medicamento") or ""
+    nombre = (interpret_medicamento(raw).get("nombre") or raw).strip(" .")
+    if not nombre:
+        return _ask(handler_input, "¿Cuál medicamento ya no necesita? Di: quita, y el nombre.")
+    attrs = _session(handler_input)
+    attrs["setup_step"] = "borrar"
+    attrs["pending_borrar"] = nombre
+    return _ask(handler_input, f"¿Quito {nombre} de la lista? Dime sí para eliminarlo, o no para dejarlo.")
+
+
 def _home(handler_input: HandlerInput) -> dict:
     return call_tool("get_home", {"user_id": resolve_user_id(handler_input)})
 
@@ -571,6 +582,27 @@ class SetupInProgressHandler(AbstractRequestHandler):
         attrs = _session(handler_input)
         step = attrs.get("setup_step")
         name = intent_name(handler_input)
+
+        if step == "borrar":
+            if name == "AMAZON.YesIntent":
+                nombre = attrs.get("pending_borrar") or ""
+                result = call_tool(
+                    "remove_medication",
+                    {"user_id": resolve_user_id(handler_input), "nombre": nombre},
+                )
+                _clear_setup(attrs)
+                if result.get("message") == "sin_conexion":
+                    return _ask(handler_input, OFFLINE_SPEAK)
+                if not result.get("ok"):
+                    return _ask(handler_input, "No encontré ese medicamento. Di: quita, y el nombre.")
+                return _say(handler_input, f"Listo. Quité {nombre}. Ya no lo voy a recordar.")
+            if name == "AMAZON.NoIntent":
+                _clear_setup(attrs)
+                return _say(handler_input, "De acuerdo. Lo dejo en la lista.")
+            return _ask(handler_input, "¿Lo quito de la lista? Dime sí o no.")
+
+        if name == "EliminarMedicamentoIntent":
+            return _ask_remove(handler_input)
 
         if name == "IniciarConfiguracionIntent":
             attrs["setup_step"] = "paciente"
@@ -848,7 +880,7 @@ class ListarMedicamentosIntentHandler(AbstractRequestHandler):
                 "y si el tratamiento es indefinido o por unos días.",
             )
         detalle = ". ".join(describe_medication(m) for m in meds[:6])
-        speak = f"Tienes configurado: {detalle}. Si quieres otro, di: agrega, y el nombre."
+        speak = f"Tienes configurado: {detalle}. Si quieres otro, di: agrega, y el nombre. Si ya no lo necesita, di: quita, y el nombre."
         return _ask(handler_input, speak)
 
 
@@ -973,6 +1005,14 @@ class IndicarDetalleIntentHandler(AbstractRequestHandler):
         return _ask(handler_input, "Primero dime el medicamento. Por ejemplo: agrega paracetamol.")
 
 
+class EliminarMedicamentoIntentHandler(AbstractRequestHandler):
+    def can_handle(self, handler_input):
+        return ask_utils.is_intent_name("EliminarMedicamentoIntent")(handler_input)
+
+    def handle(self, handler_input):
+        return _ask_remove(handler_input)
+
+
 class OmitirCantidadIntentHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
         return ask_utils.is_intent_name("OmitirCantidadIntent")(handler_input)
@@ -1008,6 +1048,7 @@ class HelpIntentHandler(AbstractRequestHandler):
             "Di: el celular es, y el número del cuidador. "
             "Para una medicina: agrega amoxicilina, una pastilla de 500, cada doce horas, por cinco días. "
             "Si no tiene fecha de fin, di: indefinido. "
+            "Si ya no lo necesita, di: quita, y el nombre. "
             "También: qué me toca ahora, ya lo tomé, todavía no, o cuáles son mis medicamentos."
         )
         return _ask(handler_input, speak)
@@ -1069,6 +1110,7 @@ sb.add_request_handler(ConfigurarCuidadorIntentHandler())
 sb.add_request_handler(IndicarPresentacionIntentHandler())
 sb.add_request_handler(IndicarFrecuenciaIntentHandler())
 sb.add_request_handler(IndicarDetalleIntentHandler())
+sb.add_request_handler(EliminarMedicamentoIntentHandler())
 sb.add_request_handler(OmitirCantidadIntentHandler())
 sb.add_request_handler(IndicarHoraIntentHandler())
 sb.add_request_handler(UsoCotidianoIntentHandler())

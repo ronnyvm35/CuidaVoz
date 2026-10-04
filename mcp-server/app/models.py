@@ -102,6 +102,12 @@ class ConfigureHomeInput(BaseModel):
     cuidador_telefono: str | None = None
 
 
+class RemoveMedicationInput(BaseModel):
+    user_id: str = "demo-user"
+    med_id: str | None = None
+    nombre: str | None = None
+
+
 class AddMedicationInput(BaseModel):
     user_id: str = "demo-user"
     nombre: str

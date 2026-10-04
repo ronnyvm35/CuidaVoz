@@ -94,7 +94,8 @@
     }
     .ok.show { display: block; }
     ul.meds { margin: 0.5rem 0 0; padding-left: 1.1rem; color: #cfe6df; }
-    ul.meds li { margin: 0.35rem 0; }
+    ul.meds li { margin: 0.45rem 0; display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; }
+    button.tiny { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
     .stack { display: grid; gap: 1rem; margin-bottom: 1.25rem; }
   </style>
 </head>
@@ -272,6 +273,28 @@
       document.getElementById("medDias").disabled = duracionEsIndefinida();
     }
 
+    function esc(value) {
+      return String(value ?? "").replace(/[&<>"']/g, ch => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[ch]));
+    }
+
+    async function removeMedication(medId, nombre) {
+      if (!confirm("¿Quitar " + nombre + " de la lista? Ya no se lo recordaremos.")) return;
+      ok.classList.remove("show");
+      const res = await fetch("/demo/remove-medication", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, med_id: medId })
+      });
+      const data = await res.json();
+      ok.textContent = data.message || "Medicamento quitado";
+      ok.classList.add("show");
+      out.textContent = JSON.stringify(data, null, 2);
+      await loadHousehold();
+      await refresh();
+    }
+
     function etiquetaMed(m) {
       const cuanto = m.cantidad ? `${m.cantidad}${m.dosis ? " de " + m.dosis : ""}` : (m.dosis || "");
       const freq = m.intervalo_horas && m.intervalo_horas < 24
@@ -296,8 +319,13 @@
         : "Pendiente de vínculo. El cuidador abre " + bot + ", pulsa Iniciar y comparte su celular. Luego pulsa Vincular Telegram.";
       const meds = data.medications || [];
       document.getElementById("medsBox").innerHTML = meds.length
-        ? "<ul class='meds'>" + meds.map(m => `<li>${etiquetaMed(m)}</li>`).join("") + "</ul>"
+        ? "<ul class='meds'>" + meds.map(m =>
+            `<li><span>${esc(etiquetaMed(m))}</span><button type="button" class="secondary tiny" data-remove="${esc(m.med_id)}" data-nombre="${esc(m.nombre)}">Quitar</button></li>`
+          ).join("") + "</ul>"
         : "<p class='hint'>Todavía no hay medicamentos. Agrega el primero arriba.</p>";
+      document.querySelectorAll("[data-remove]").forEach(btn => {
+        btn.onclick = () => removeMedication(btn.dataset.remove, btn.dataset.nombre);
+      });
       out.textContent = JSON.stringify(data, null, 2);
     }
 

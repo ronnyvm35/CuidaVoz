@@ -130,6 +130,14 @@ class InMemoryStore:
             meds.append(med)
             return deepcopy(med)
 
+    def delete_medication(self, user_id: str, med_id: str) -> Medication | None:
+        with self._lock:
+            meds = self.medications.get(user_id, [])
+            for idx, existing in enumerate(meds):
+                if existing.med_id == med_id:
+                    return deepcopy(meds.pop(idx))
+        return None
+
     def add_dose(self, dose: DoseLog) -> DoseLog:
         with self._lock:
             self.doses.setdefault(dose.user_id, []).append(dose)

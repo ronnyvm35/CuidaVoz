@@ -248,6 +248,21 @@
             "sin celular",
             "lo dejo después"
           ]
+        },
+        {
+          "name": "EliminarMedicamentoIntent",
+          "slots": [
+            { "name": "medicamento", "type": "AMAZON.SearchQuery" }
+          ],
+          "samples": [
+            "quita {medicamento}",
+            "elimina {medicamento}",
+            "borra {medicamento}",
+            "retira {medicamento}",
+            "ya no tomo {medicamento}",
+            "ya no necesita {medicamento}",
+            "quiero quitar {medicamento}"
+          ]
         }
       ],
       "types": [

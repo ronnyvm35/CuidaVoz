@@ -13,6 +13,7 @@ from . import tools
 from .models import (
     AddMedicationInput,
     ConfigureHomeInput,
+    RemoveMedicationInput,
     LogDoseInput,
     NotifyCaregiverInput,
     ScheduleReminderInput,
@@ -130,6 +131,12 @@ def get_adherence_today(user_id: str) -> dict:
     return tools.get_adherence_today(user_id).model_dump()
 
 
+@mcp.tool()
+def remove_medication(user_id: str, med_id: str | None = None, nombre: str | None = None) -> dict:
+    """Quita un medicamento de la lista del paciente."""
+    return tools.remove_medication(user_id, med_id, nombre).model_dump()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with mcp.session_manager.run():
@@ -166,6 +173,7 @@ async def health():
             "get_adherence_today",
             "get_home",
             "configure_home",
+            "remove_medication",
         ],
         "demo_user": "demo-user",
         "medications": len(store.list_medications("demo-user")),
@@ -222,6 +230,11 @@ async def rest_get_home(body: UserIdInput):
 @app.post("/api/tools/configure_home", response_model=ToolResponse)
 async def rest_configure_home(body: ConfigureHomeInput):
     return tools.configure_home(body.user_id, body.nombre, body.cuidador_telefono)
+
+
+@app.post("/api/tools/remove_medication", response_model=ToolResponse)
+async def rest_remove_medication(body: RemoveMedicationInput):
+    return tools.remove_medication(body.user_id, body.med_id, body.nombre)
 
 
 @app.get("/demo/household/{user_id}")
@@ -287,6 +300,11 @@ async def demo_add_medication(body: AddMedicationInput):
         intervalo_horas=body.intervalo_horas,
     )
     return result.model_dump()
+
+
+@app.post("/demo/remove-medication")
+async def demo_remove_medication(body: RemoveMedicationInput):
+    return tools.remove_medication(body.user_id, body.med_id, body.nombre).model_dump()
 
 
 @app.post("/demo/sync-telegram")

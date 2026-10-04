@@ -65,6 +65,23 @@ def _course_progress(user_id: str, med: Medication) -> dict:
     }
 
 
+def remove_medication(user_id: str, med_id: str | None = None, nombre: str | None = None) -> ToolResponse:
+    store.get_or_create_user(user_id)
+    med = store.get_medication(user_id, med_id) if med_id else None
+    if med is None and nombre:
+        med = store.find_medication_by_name(user_id, nombre)
+    if med is None and med_id:
+        med = store.find_medication_by_name(user_id, med_id)
+    if med is None:
+        return ToolResponse(ok=False, message="Medicamento no encontrado")
+    store.delete_medication(user_id, med.med_id)
+    return ToolResponse(
+        ok=True,
+        data=med.model_dump(),
+        message=f"Quité {medication_label(med)} de la lista",
+    )
+
+
 def get_medications(user_id: str) -> ToolResponse:
     store.get_or_create_user(user_id)
     meds = store.list_medications(user_id)
