@@ -90,7 +90,10 @@
             "configura mis medicamentos",
             "quiero agregar un medicamento",
             "configura mis medicinas",
-            "quiero configurar mis medicamentos"
+            "quiero configurar mis medicamentos",
+            "configura el hogar",
+            "configura el paciente",
+            "cambia los datos del paciente"
           ]
         },
         {
@@ -135,7 +138,13 @@
             "de uso diario",
             "es permanente",
             "lo tomo a diario",
-            "de uso cotidiano"
+            "de uso cotidiano",
+            "es indefinido",
+            "tratamiento indefinido",
+            "de por vida",
+            "sin fecha de fin",
+            "lo toma siempre",
+            "es crónico"
           ]
         },
         {
@@ -162,6 +171,110 @@
             "durante {dias} días",
             "{dias} días",
             "son {dias} días"
+          ]
+        },
+        {
+          "name": "ConfigurarPacienteIntent",
+          "slots": [
+            { "name": "paciente", "type": "AMAZON.SearchQuery" }
+          ],
+          "samples": [
+            "el paciente se llama {paciente}",
+            "me llamo {paciente}",
+            "el paciente es {paciente}",
+            "se llama {paciente}"
+          ]
+        },
+        {
+          "name": "ConfigurarCuidadorIntent",
+          "slots": [
+            { "name": "telefono", "type": "AMAZON.PhoneNumber" }
+          ],
+          "samples": [
+            "el celular es {telefono}",
+            "el celular del cuidador es {telefono}",
+            "el número del cuidador es {telefono}",
+            "avisa al {telefono}",
+            "el teléfono es {telefono}"
+          ]
+        },
+        {
+          "name": "IndicarPresentacionIntent",
+          "slots": [
+            { "name": "forma", "type": "Presentacion" }
+          ],
+          "samples": [
+            "es {forma}",
+            "es una {forma}",
+            "en {forma}",
+            "lo tomo en {forma}"
+          ]
+        },
+        {
+          "name": "IndicarFrecuenciaIntent",
+          "slots": [
+            { "name": "horas", "type": "AMAZON.NUMBER" },
+            { "name": "hora", "type": "AMAZON.TIME" }
+          ],
+          "samples": [
+            "cada {horas} horas",
+            "cada {horas} horas a las {hora}",
+            "cada {horas} horas desde las {hora}",
+            "una vez al día",
+            "una vez al día a las {hora}",
+            "solo una vez al día"
+          ]
+        },
+        {
+          "name": "IndicarDetalleIntent",
+          "slots": [
+            { "name": "detalle", "type": "AMAZON.SearchQuery" }
+          ],
+          "samples": [
+            "tomo {detalle}",
+            "son {detalle}",
+            "la dosis es {detalle}",
+            "cantidad {detalle}"
+          ]
+        },
+        {
+          "name": "OmitirCantidadIntent",
+          "slots": [],
+          "samples": [
+            "sin cantidad",
+            "no sé la cantidad",
+            "omitir cantidad",
+            "ahora no",
+            "sin celular",
+            "lo dejo después"
+          ]
+        }
+      ],
+      "types": [
+        {
+          "name": "Presentacion",
+          "values": [
+            {
+              "id": "pastilla",
+              "name": {
+                "value": "pastilla",
+                "synonyms": ["pastillas", "tableta", "tabletas", "comprimido", "comprimidos", "cápsula", "capsula"]
+              }
+            },
+            {
+              "id": "jarabe",
+              "name": {
+                "value": "jarabe",
+                "synonyms": ["suspensión", "suspension", "líquido", "liquido"]
+              }
+            },
+            {
+              "id": "inyeccion",
+              "name": {
+                "value": "inyección",
+                "synonyms": ["inyeccion", "inyecciones", "ampolla", "ampolleta", "jeringa"]
+              }
+            }
           ]
         }
       ]

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from threading import Lock
 from uuid import uuid4
 
-from .models import CaregiverAlert, DoseLog, Medication, User
+from .models import CaregiverAlert, DoseLog, Medication, User, phone_keys
 
 
 def _now_iso() -> str:
@@ -22,6 +22,9 @@ class InMemoryStore:
         self.medications: dict[str, list[Medication]] = {}
         self.doses: dict[str, list[DoseLog]] = {}
         self.alerts: dict[str, list[CaregiverAlert]] = {}
+        # Celular normalizado → chat_id. Lo llena el bot cuando el cuidador comparte su contacto.
+        self.telegram_by_phone: dict[str, str] = {}
+        self.telegram_update_offset: int = 0
         self._seed()
 
     def _seed(self) -> None:
@@ -29,9 +32,11 @@ class InMemoryStore:
         self.users[user_id] = User(
             user_id=user_id,
             nombre="Juan",
+            cuidador_telefono="",
             cuidador_whatsapp="",
             cuidador_telegram=os.getenv("TELEGRAM_CHAT_ID", ""),
             timezone="America/Mexico_City",
+            guia_vista=True,
         )
         self.medications[user_id] = [
             Medication(
@@ -39,6 +44,9 @@ class InMemoryStore:
                 med_id="med-losartan",
                 nombre="Losartán",
                 dosis="50 mg",
+                forma="pastilla",
+                cantidad="1 pastilla",
+                intervalo_horas=24,
                 horarios=["08:00"],
                 con_comida=False,
                 # crónico: sin curso (indefinido)
@@ -48,6 +56,9 @@ class InMemoryStore:
                 med_id="med-amoxicilina",
                 nombre="Amoxicilina",
                 dosis="500 mg",
+                forma="pastilla",
+                cantidad="1 pastilla",
+                intervalo_horas=12,
                 horarios=["08:00", "20:00"],
                 con_comida=True,
                 dias_tratamiento=5,
@@ -76,8 +87,10 @@ class InMemoryStore:
         user = User(
             user_id=user_id,
             nombre=nombre,
+            cuidador_telefono="",
             cuidador_telegram=os.getenv("TELEGRAM_CHAT_ID", ""),
             timezone="America/Mexico_City",
+            guia_vista=False,
         )
         self.upsert_user(user)
         # Cada hogar empieza sin medicamentos. El seed de Losartán/Amoxicilina
@@ -150,6 +163,19 @@ class InMemoryStore:
 
     def new_med_id(self) -> str:
         return f"med-{uuid4().hex[:8]}"
+
+    def remember_telegram(self, phone_keys: set[str], chat_id: str) -> None:
+        with self._lock:
+            for key in phone_keys:
+                if key:
+                    self.telegram_by_phone[key] = chat_id
+
+    def chat_for_phone(self, phone: str) -> str:
+        for key in phone_keys(phone):
+            found = self.telegram_by_phone.get(key)
+            if found:
+                return found
+        return ""
 
 
 store = InMemoryStore()

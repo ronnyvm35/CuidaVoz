@@ -26,7 +26,17 @@
     main { max-width: 920px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
     h1 { font-size: clamp(2rem, 4vw, 2.8rem); letter-spacing: -0.03em; margin: 0 0 0.35rem; }
     h2 { font-size: 1.1rem; margin: 0 0 0.75rem; }
-    .sub { color: var(--muted); margin-bottom: 1.5rem; }
+    .sub { color: var(--muted); margin-bottom: 1rem; }
+    .guide {
+      background: #132824;
+      border: 1px solid #2a4a43;
+      border-radius: 14px;
+      padding: 0.9rem 1.1rem;
+      margin-bottom: 1.25rem;
+      color: #cfe6df;
+      line-height: 1.45;
+    }
+    .guide strong { color: var(--text); }
     .grid {
       display: grid;
       gap: 1rem;
@@ -41,7 +51,7 @@
     }
     .stat .label { color: var(--muted); font-size: 0.85rem; }
     .stat .value { font-size: 1.8rem; font-weight: 700; margin-top: 0.25rem; }
-    .actions { display: flex; flex-wrap: wrap; gap: 0.65rem; margin: 1rem 0 1.5rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.65rem; margin: 1rem 0 0.4rem; }
     button, .btn {
       border: 0; border-radius: 999px; padding: 0.7rem 1.1rem;
       font-weight: 600; cursor: pointer; background: var(--accent); color: #06241a;
@@ -49,12 +59,22 @@
     button.secondary { background: #2a4450; color: var(--text); }
     button.warn { background: var(--warn); color: #1d1400; }
     label { display: block; font-size: 0.8rem; color: var(--muted); margin: 0.55rem 0 0.25rem; }
-    input {
+    input, select {
       width: 100%; border-radius: 10px; border: 1px solid #2f5249; background: #0b1513;
       color: var(--text); padding: 0.65rem 0.75rem;
     }
+    .hint { color: var(--muted); font-size: 0.78rem; margin: 0.3rem 0 0; line-height: 1.35; }
     .form-grid { display: grid; gap: 0.35rem 1rem; grid-template-columns: 1fr 1fr; }
-    @media (max-width: 700px) { .form-grid { grid-template-columns: 1fr; } }
+    .span-2 { grid-column: 1 / -1; }
+    @media (max-width: 700px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .span-2 { grid-column: auto; }
+    }
+    .choices { display: flex; flex-wrap: wrap; gap: 0.8rem 1.2rem; margin-top: 0.35rem; }
+    .choice { display: flex; align-items: center; gap: 0.4rem; color: var(--text); font-size: 0.95rem; }
+    .choice input { width: auto; }
+    .inline { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; align-items: center; }
+    .unit { color: var(--muted); font-size: 0.85rem; min-width: 5.5rem; }
     pre {
       white-space: pre-wrap; word-break: break-word; background: #0b1513;
       border-radius: 12px; padding: 1rem; border: 1px solid #27443d; color: #cfe6df; min-height: 120px;
@@ -74,6 +94,7 @@
     }
     .ok.show { display: block; }
     ul.meds { margin: 0.5rem 0 0; padding-left: 1.1rem; color: #cfe6df; }
+    ul.meds li { margin: 0.35rem 0; }
     .stack { display: grid; gap: 1rem; margin-bottom: 1.25rem; }
   </style>
 </head>
@@ -81,7 +102,14 @@
   <main>
     <span class="badge">CuidaVoz · demo funcional</span>
     <h1>Panel del hogar</h1>
-    <p class="sub">Configura paciente y Telegram del cuidador, dispara el flujo de adherencia y escala si no hay respuesta.</p>
+    <p class="sub">Configura al paciente, el celular del cuidador y cada medicamento. Alexa puede hacer lo mismo por voz.</p>
+    <div class="guide">
+      <strong>Cómo dejarlo listo.</strong>
+      1. Nombre del paciente.
+      2. Celular del cuidador, con lada. Las alertas salen por Telegram: esa persona abre el bot, pulsa Iniciar y comparte su contacto. No hace falta el chat id.
+      3. De cada medicina: si es pastilla, jarabe o inyección, cuánto, cada cuántas horas y si el tratamiento es indefinido o por unos días.
+      Por voz, la primera vez que se abre la skill, Alexa pide estos mismos datos.
+    </div>
 
     <div class="grid">
       <div class="stat"><div class="label">Tomadas</div><div class="value" id="taken">—</div></div>
@@ -92,42 +120,90 @@
 
     <div class="stack">
       <div class="box">
-        <h2>1. Configurar hogar</h2>
+        <h2>1. Paciente y cuidador</h2>
         <div class="form-grid">
           <div>
             <label>Nombre del paciente</label>
-            <input id="nombre" placeholder="Juan" />
+            <input id="nombre" placeholder="Ronny" />
           </div>
           <div>
-            <label>Telegram chat_id del cuidador</label>
-            <input id="telegram" placeholder="123456789" />
-          </div>
-          <div>
-            <label>Medicamento (opcional)</label>
-            <input id="medNombre" placeholder="Amoxicilina" />
-          </div>
-          <div>
-            <label>Dosis + hora</label>
-            <input id="medMeta" placeholder="500 mg @ 08:00" />
-          </div>
-          <div>
-            <label>Días de tratamiento (ej. 5)</label>
-            <input id="medDias" type="number" min="1" placeholder="5" value="5" />
+            <label>Celular del cuidador</label>
+            <input id="telefono" inputmode="tel" placeholder="+52 55 1234 5678" />
+            <p class="hint" id="tgHint">Con lada. Un número de 10 dígitos se guarda como México (+52). Telegram no acepta el celular como destino: el bot lo reconoce cuando el cuidador comparte su contacto.</p>
           </div>
         </div>
         <div class="actions">
-          <button onclick="saveHousehold()">Guardar configuración</button>
+          <button onclick="saveHousehold()">Guardar paciente y cuidador</button>
+          <button class="secondary" onclick="syncTelegram()">Vincular Telegram</button>
           <button class="secondary" onclick="loadHousehold()">Cargar</button>
+        </div>
+        <p class="hint" id="tgStatus"></p>
+      </div>
+
+      <div class="box">
+        <h2>2. Agregar medicamento</h2>
+        <div class="form-grid">
+          <div>
+            <label>Nombre del medicamento</label>
+            <input id="medNombre" placeholder="Amoxicilina" />
+          </div>
+          <div>
+            <label>Presentación</label>
+            <select id="forma">
+              <option value="pastilla">Pastilla</option>
+              <option value="jarabe">Jarabe</option>
+              <option value="inyeccion">Inyección</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+          <div>
+            <label>Cantidad</label>
+            <div class="inline">
+              <input id="cantidad" type="number" min="0.5" step="0.5" value="1" />
+              <span class="unit" id="unidad">pastilla(s)</span>
+            </div>
+          </div>
+          <div>
+            <label>Concentración (opcional)</label>
+            <input id="dosis" placeholder="500 mg" />
+          </div>
+          <div>
+            <label>Cada cuánto</label>
+            <select id="intervalo">
+              <option value="24">Una vez al día</option>
+              <option value="12">Cada 12 horas</option>
+              <option value="8">Cada 8 horas</option>
+              <option value="6">Cada 6 horas</option>
+              <option value="4">Cada 4 horas</option>
+            </select>
+          </div>
+          <div>
+            <label>Hora de la primera toma</label>
+            <input id="horaInicio" type="time" value="08:00" />
+            <p class="hint" id="previewHorarios">Tomas: 08:00</p>
+          </div>
+          <div class="span-2">
+            <label>Duración del tratamiento</label>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="duracion" value="indefinido" checked /> Indefinido</label>
+              <label class="choice"><input type="radio" name="duracion" value="dias" /> Por unos días</label>
+            </div>
+            <input id="medDias" type="number" min="1" max="365" placeholder="5" value="5" disabled />
+            <p class="hint">Indefinido es para medicamentos de todos los días, sin fecha de fin. Por unos días sirve para un antibiótico u otro curso corto.</p>
+          </div>
+        </div>
+        <div class="actions">
+          <button onclick="addMedication()">Agregar medicamento</button>
         </div>
         <div id="medsBox"></div>
       </div>
 
       <div class="box">
-        <h2>2. Demostrar el problema resuelto</h2>
+        <h2>3. Demostrar el problema resuelto</h2>
         <div class="actions">
           <button onclick="runFullFlow()">Demo completa (recordatorio → Telegram → confirmado)</button>
           <button class="secondary" onclick="triggerReminder()">Solo recordatorio</button>
-          <button class="warn" onclick="simulateNoResponse()">Solo escalado Telegram</button>
+          <button class="warn" onclick="simulateNoResponse()">Solo alerta por Telegram</button>
           <button class="secondary" onclick="confirmTaken()">Confirmar “ya lo tomé”</button>
           <button class="secondary" onclick="refresh()">Actualizar</button>
         </div>
@@ -144,58 +220,144 @@
     const wa = document.getElementById("wa");
     const ok = document.getElementById("ok");
 
+    function expandTimes(hora, intervalo) {
+      const [hh, mm] = (hora || "08:00").split(":").map(n => parseInt(n, 10));
+      if (!intervalo || intervalo >= 24) return [hora || "08:00"];
+      const step = intervalo * 60;
+      let cursor = (hh * 60) + (mm || 0);
+      const times = [];
+      const seen = new Set();
+      while (!seen.has(cursor % (24 * 60))) {
+        const minute = cursor % (24 * 60);
+        seen.add(minute);
+        const h = String(Math.floor(minute / 60)).padStart(2, "0");
+        const m = String(minute % 60).padStart(2, "0");
+        times.push(`${h}:${m}`);
+        cursor += step;
+      }
+      return times;
+    }
+
+    function unidadDe(forma, n) {
+      const num = Number(n);
+      if (forma === "jarabe") return "ml";
+      if (forma === "inyeccion") return num === 1 ? "ampolla" : "ampollas";
+      if (forma === "pastilla") return num === 1 ? "pastilla" : "pastillas";
+      return "unidades";
+    }
+
+    function cantidadTexto() {
+      const n = document.getElementById("cantidad").value.trim();
+      const forma = document.getElementById("forma").value;
+      if (!n) return "";
+      return `${n} ${unidadDe(forma, n)}`;
+    }
+
+    function refreshPreview() {
+      const forma = document.getElementById("forma").value;
+      const n = document.getElementById("cantidad").value.trim() || "1";
+      document.getElementById("unidad").textContent = unidadDe(forma, n);
+      const hora = document.getElementById("horaInicio").value || "08:00";
+      const intervalo = Number(document.getElementById("intervalo").value);
+      const times = expandTimes(hora, intervalo);
+      const freq = intervalo >= 24 ? "una vez al día" : `cada ${intervalo} horas`;
+      document.getElementById("previewHorarios").textContent = `${freq}: ${times.join(", ")}`;
+    }
+
+    function duracionEsIndefinida() {
+      return document.querySelector("input[name=duracion]:checked").value === "indefinido";
+    }
+
+    function syncDias() {
+      document.getElementById("medDias").disabled = duracionEsIndefinida();
+    }
+
+    function etiquetaMed(m) {
+      const cuanto = m.cantidad ? `${m.cantidad}${m.dosis ? " de " + m.dosis : ""}` : (m.dosis || "");
+      const freq = m.intervalo_horas && m.intervalo_horas < 24
+        ? `cada ${m.intervalo_horas} h`
+        : "una vez al día";
+      const horas = (m.horarios || []).join(", ");
+      const curso = m.dias_tratamiento
+        ? `${m.dias_tratamiento} días (${m.fecha_inicio} → ${m.fecha_fin})`
+        : "indefinido";
+      return `${m.nombre}${cuanto ? " · " + cuanto : ""} · ${freq} (${horas}) · ${curso}`;
+    }
+
     async function loadHousehold() {
       const res = await fetch(`/demo/household/${userId}`);
       const data = await res.json();
       document.getElementById("nombre").value = data.user?.nombre || "";
-      document.getElementById("telegram").value = data.user?.cuidador_telegram || "";
+      document.getElementById("telefono").value = data.user?.cuidador_telefono || "";
       document.getElementById("patient").textContent = data.user?.nombre || "—";
+      const bot = data.bot || "https://t.me/CuidaVoz_bot";
+      document.getElementById("tgStatus").textContent = data.telegram_vinculado
+        ? "Telegram vinculado. Las alertas salen a ese celular."
+        : "Pendiente de vínculo. El cuidador abre " + bot + ", pulsa Iniciar y comparte su celular. Luego pulsa Vincular Telegram.";
       const meds = data.medications || [];
-      document.getElementById("medsBox").innerHTML =
-        "<ul class='meds'>" + meds.map(m => {
-          const curso = m.dias_tratamiento
-            ? ` · curso ${m.dias_tratamiento} días (${m.fecha_inicio} → ${m.fecha_fin})`
-            : " · continuo";
-          return `<li>${m.nombre} ${m.dosis} · ${(m.horarios||[]).join(", ")}${curso}</li>`;
-        }).join("") + "</ul>";
+      document.getElementById("medsBox").innerHTML = meds.length
+        ? "<ul class='meds'>" + meds.map(m => `<li>${etiquetaMed(m)}</li>`).join("") + "</ul>"
+        : "<p class='hint'>Todavía no hay medicamentos. Agrega el primero arriba.</p>";
       out.textContent = JSON.stringify(data, null, 2);
     }
 
+    async function syncTelegram() {
+      ok.classList.remove("show");
+      const res = await fetch("/demo/sync-telegram", { method: "POST" });
+      const data = await res.json();
+      ok.textContent = data.message || "Consulta a Telegram terminada";
+      ok.classList.add("show");
+      out.textContent = JSON.stringify(data, null, 2);
+      await loadHousehold();
+    }
+
     async function saveHousehold() {
+      ok.classList.remove("show");
       const nombre = document.getElementById("nombre").value.trim();
-      const telegram = document.getElementById("telegram").value.trim();
+      const telefono = document.getElementById("telefono").value.trim();
       const res = await fetch("/demo/setup-household", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, nombre, cuidador_telegram: telegram })
+        body: JSON.stringify({ user_id: userId, nombre, cuidador_telefono: telefono })
       });
       const data = await res.json();
-      const medNombre = document.getElementById("medNombre").value.trim();
-      const medMeta = document.getElementById("medMeta").value.trim();
-      if (medNombre) {
-        let dosis = "";
-        let time = "08:00";
-        if (medMeta.includes("@")) {
-          const [d, t] = medMeta.split("@").map(s => s.trim());
-          dosis = d; time = t || "08:00";
-        } else if (medMeta) {
-          dosis = medMeta;
-        }
-        await fetch("/demo/add-medication", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: userId,
-            nombre: medNombre,
-            dosis,
-            time,
-            dias_tratamiento: Number(document.getElementById("medDias").value || 0) || null
-          })
-        });
-      }
-      ok.textContent = data.message || "Configuración guardada";
+      ok.textContent = data.message || "Paciente y cuidador guardados";
       ok.classList.add("show");
       out.textContent = JSON.stringify(data, null, 2);
+      await loadHousehold();
+    }
+
+    async function addMedication() {
+      ok.classList.remove("show");
+      wa.classList.remove("show");
+      const medNombre = document.getElementById("medNombre").value.trim();
+      if (!medNombre) {
+        ok.textContent = "Escribe el nombre del medicamento.";
+        ok.classList.add("show");
+        return;
+      }
+      const indefinido = duracionEsIndefinida();
+      const dias = indefinido ? null : (Number(document.getElementById("medDias").value || 0) || null);
+      const res = await fetch("/demo/add-medication", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          nombre: medNombre,
+          dosis: document.getElementById("dosis").value.trim(),
+          forma: document.getElementById("forma").value,
+          cantidad: cantidadTexto(),
+          time: document.getElementById("horaInicio").value || "08:00",
+          intervalo_horas: Number(document.getElementById("intervalo").value),
+          dias_tratamiento: dias,
+          uso: indefinido ? "cotidiano" : "temporal"
+        })
+      });
+      const data = await res.json();
+      ok.textContent = data.message || "Medicamento guardado";
+      ok.classList.add("show");
+      out.textContent = JSON.stringify(data, null, 2);
+      document.getElementById("medNombre").value = "";
       await loadHousehold();
       await refresh();
     }
@@ -210,6 +372,15 @@
       out.textContent = JSON.stringify(data, null, 2);
     }
 
+    function showAlerta(data) {
+      const preview = data.alerta_preview || data.telegram_preview;
+      const destino = data.alerta_destino ? ` (${data.alerta_destino})` : "";
+      if (preview) {
+        wa.textContent = "Telegram al cuidador" + destino + ": " + preview;
+        wa.classList.add("show");
+      }
+    }
+
     async function triggerReminder() {
       wa.classList.remove("show"); ok.classList.remove("show");
       const res = await fetch(`/demo/trigger-reminder?user_id=${userId}`, { method: "POST" });
@@ -222,10 +393,7 @@
       const res = await fetch(`/demo/simulate-no-response?user_id=${userId}`, { method: "POST" });
       const data = await res.json();
       out.textContent = JSON.stringify(data, null, 2);
-      if (data.telegram_preview) {
-        wa.textContent = "Telegram al cuidador: " + data.telegram_preview;
-        wa.classList.add("show");
-      }
+      showAlerta(data);
       await refresh();
     }
 
@@ -244,17 +412,20 @@
       const res = await fetch(`/demo/run-full-flow?user_id=${userId}`, { method: "POST" });
       const data = await res.json();
       out.textContent = JSON.stringify(data, null, 2);
-      const preview = data.steps?.["2_escalation_telegram"]?.telegram_preview;
-      if (preview) {
-        wa.textContent = "Telegram al cuidador: " + preview;
-        wa.classList.add("show");
-      }
+      showAlerta(data.steps?.["2_escalation"] || {});
       ok.textContent = data.summary || "Flujo completo ejecutado";
       ok.classList.add("show");
       await loadHousehold();
       await refresh();
     }
 
+    document.getElementById("forma").addEventListener("change", refreshPreview);
+    document.getElementById("cantidad").addEventListener("input", refreshPreview);
+    document.getElementById("intervalo").addEventListener("change", refreshPreview);
+    document.getElementById("horaInicio").addEventListener("change", refreshPreview);
+    document.querySelectorAll("input[name=duracion]").forEach(el => el.addEventListener("change", syncDias));
+    refreshPreview();
+    syncDias();
     loadHousehold();
     refresh();
   </script>

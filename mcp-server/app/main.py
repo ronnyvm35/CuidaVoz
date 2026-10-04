@@ -12,12 +12,14 @@ from mcp.server.transport_security import TransportSecuritySettings
 from . import tools
 from .models import (
     AddMedicationInput,
+    ConfigureHomeInput,
     LogDoseInput,
     NotifyCaregiverInput,
     ScheduleReminderInput,
     SetupHouseholdInput,
     ToolResponse,
     UserIdInput,
+    normalize_phone,
 )
 from .store import now_iso, store
 
@@ -84,8 +86,11 @@ def schedule_reminder(
     con_comida: bool = False,
     dias_tratamiento: int | None = None,
     uso: str | None = None,
+    forma: str | None = None,
+    cantidad: str | None = None,
+    intervalo_horas: int | None = None,
 ) -> dict:
-    """Crea o actualiza un recordatorio. uso=cotidiano, o dias_tratamiento=5 para un curso temporal."""
+    """Crea o actualiza un recordatorio. uso=cotidiano es indefinido; dias_tratamiento=5 es un curso. intervalo_horas: 6, 8, 12 o 24."""
     return tools.schedule_reminder(
         user_id=user_id,
         time=time,
@@ -95,13 +100,28 @@ def schedule_reminder(
         con_comida=con_comida,
         dias_tratamiento=dias_tratamiento,
         uso=uso,
+        forma=forma,
+        cantidad=cantidad,
+        intervalo_horas=intervalo_horas,
     ).model_dump()
 
 
 @mcp.tool()
 def notify_caregiver(user_id: str, message: str) -> dict:
-    """Registra una alerta al cuidador (Telegram cuando TELEGRAM_BOT_TOKEN está configurado)."""
+    """Avisa al cuidador por Telegram. El celular se usa para encontrar su chat, no hace falta el chat id."""
     return tools.notify_caregiver(user_id, message).model_dump()
+
+
+@mcp.tool()
+def get_home(user_id: str) -> dict:
+    """Devuelve paciente, celular del cuidador y medicamentos. La primera vez marca la guía como vista."""
+    return tools.get_home(user_id).model_dump()
+
+
+@mcp.tool()
+def configure_home(user_id: str, nombre: str | None = None, cuidador_telefono: str | None = None) -> dict:
+    """Guarda el nombre del paciente y el celular del cuidador."""
+    return tools.configure_home(user_id, nombre, cuidador_telefono).model_dump()
 
 
 @mcp.tool()
@@ -144,6 +164,8 @@ async def health():
             "schedule_reminder",
             "notify_caregiver",
             "get_adherence_today",
+            "get_home",
+            "configure_home",
         ],
         "demo_user": "demo-user",
         "medications": len(store.list_medications("demo-user")),
@@ -176,6 +198,9 @@ async def rest_schedule_reminder(body: ScheduleReminderInput):
         con_comida=body.con_comida,
         dias_tratamiento=body.dias_tratamiento,
         uso=body.uso,
+        forma=body.forma,
+        cantidad=body.cantidad,
+        intervalo_horas=body.intervalo_horas,
     )
 
 
@@ -189,15 +214,27 @@ async def rest_get_adherence_today(body: UserIdInput):
     return tools.get_adherence_today(body.user_id)
 
 
+@app.post("/api/tools/get_home", response_model=ToolResponse)
+async def rest_get_home(body: UserIdInput):
+    return tools.get_home(body.user_id)
+
+
+@app.post("/api/tools/configure_home", response_model=ToolResponse)
+async def rest_configure_home(body: ConfigureHomeInput):
+    return tools.configure_home(body.user_id, body.nombre, body.cuidador_telefono)
+
+
 @app.get("/demo/household/{user_id}")
 async def demo_household(user_id: str):
     user = store.get_or_create_user(user_id)
     meds = store.list_medications(user_id)
+    bot = tools._bot_username()
     return {
         "ok": True,
         "user": user.model_dump(),
         "medications": [m.model_dump() for m in meds],
-        "bot": "https://t.me/CuidaVoz_bot",
+        "telegram_vinculado": bool(user.cuidador_telegram),
+        "bot": f"https://t.me/{bot}",
     }
 
 
@@ -205,13 +242,32 @@ async def demo_household(user_id: str):
 async def demo_setup_household(body: SetupHouseholdInput):
     user = store.get_or_create_user(body.user_id, body.nombre)
     user.nombre = body.nombre.strip() or user.nombre
-    user.cuidador_telegram = body.cuidador_telegram.strip()
+    raw_phone = body.cuidador_telefono.strip()
+    phone = normalize_phone(raw_phone)
+    if raw_phone and not phone:
+        return {"ok": False, "message": "El celular necesita al menos 8 dígitos, con lada"}
+    user.cuidador_telefono = phone
+    user.cuidador_telegram = store.chat_for_phone(phone) if phone else user.cuidador_telegram
+    if body.cuidador_telegram.strip():
+        user.cuidador_telegram = body.cuidador_telegram.strip()
     user.timezone = body.timezone
     store.upsert_user(user)
+    destino = user.cuidador_telefono or "sin celular"
+    if phone and user.cuidador_telegram:
+        detalle = f"Alertas por Telegram al {destino}"
+    elif phone:
+        detalle = (
+            f"Celular {destino} guardado. El cuidador abre @{tools._bot_username()}, "
+            "pulsa Iniciar y comparte su contacto."
+        )
+    else:
+        detalle = "Falta el celular del cuidador"
     return {
         "ok": True,
-        "message": f"Hogar configurado: {user.nombre} → Telegram {user.cuidador_telegram}",
+        "message": f"Hogar configurado: {user.nombre}. {detalle}",
         "user": user.model_dump(),
+        "telegram_vinculado": bool(user.cuidador_telegram),
+        "bot": f"https://t.me/{tools._bot_username()}",
     }
 
 
@@ -225,8 +281,17 @@ async def demo_add_medication(body: AddMedicationInput):
         dosis=body.dosis,
         con_comida=body.con_comida,
         dias_tratamiento=body.dias_tratamiento,
+        uso=body.uso or ("temporal" if body.dias_tratamiento else "cotidiano"),
+        forma=body.forma,
+        cantidad=body.cantidad,
+        intervalo_horas=body.intervalo_horas,
     )
     return result.model_dump()
+
+
+@app.post("/demo/sync-telegram")
+async def demo_sync_telegram():
+    return tools.sync_telegram_links().model_dump()
 
 
 @app.post("/demo/confirm-taken")
@@ -240,7 +305,7 @@ async def demo_confirm_taken(user_id: str = "demo-user"):
 
 @app.post("/demo/run-full-flow")
 async def demo_run_full_flow(user_id: str = "demo-user"):
-    """Demo del problema completo: recordatorio → 2 sin respuesta → Telegram → confirmación."""
+    """Demo del problema completo: recordatorio → 2 sin respuesta → celular del cuidador → confirmación."""
     store.get_or_create_user(user_id)
     store.clear_doses_today(user_id)
     reminder = await demo_trigger_reminder(user_id)
@@ -250,11 +315,11 @@ async def demo_run_full_flow(user_id: str = "demo-user"):
         "ok": True,
         "steps": {
             "1_reminder": reminder,
-            "2_escalation_telegram": escalation,
+            "2_escalation": escalation,
             "3_user_confirmed": confirmation,
         },
         "summary": (
-            "Recordatorio generado, cuidador alertado por Telegram tras 2 intentos, "
+            "Recordatorio generado, cuidador alertado en su celular tras 2 intentos, "
             "y dosis confirmada. Ese es el ciclo de valor de CuidaVoz."
         ),
     }
@@ -277,7 +342,15 @@ async def demo_trigger_reminder(user_id: str = "demo-user"):
         return {"ok": False, "message": "Sin medicamentos", "triggered_at": now_iso()}
 
     med = nxt.data
-    prompt = f"Es hora de tu {med['nombre']} {med['dosis']}. ¿Ya lo tomaste?"
+    cuanto = med.get("cantidad") or ""
+    dosis = med.get("dosis") or ""
+    if cuanto and dosis:
+        label = f"{cuanto} de {med['nombre']} de {dosis}"
+    elif cuanto:
+        label = f"{cuanto} de {med['nombre']}"
+    else:
+        label = f"{med['nombre']} {dosis}".strip()
+    prompt = f"Es hora de tu {label}. ¿Ya lo tomaste?"
     pending = tools.log_dose(user_id, med["med_id"], "pending")
     return {
         "ok": True,
@@ -301,6 +374,9 @@ async def demo_simulate_no_response(user_id: str = "demo-user"):
         "attempts": [first.model_dump(), second.model_dump()],
         "caregiver_notified": bool((second.data or {}).get("caregiver_notified")),
         "alerts": alerts[-1:] if alerts else [],
+        "alerta_preview": alerts[-1]["mensaje"] if alerts else None,
+        "alerta_destino": alerts[-1].get("destino") if alerts else None,
+        "alerta_canal": alerts[-1].get("canal") if alerts else None,
         "telegram_preview": alerts[-1]["mensaje"] if alerts else None,
     }
 
